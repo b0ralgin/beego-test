@@ -13,8 +13,6 @@ type LoginController struct {
 	beego.Controller
 }
 
-const SIGNKEY = "B1rljsRlQlH7+NSvWuFjU/DROpULnTFB"
-
 type customClaims struct {
 	jwt.StandardClaims
 	ID string `json:"id"`
@@ -72,6 +70,6 @@ func generateJWTToken(user models.User) (map[string]string, error) {
 		ID: user.Id,
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString([]byte(SIGNKEY))
+	tokenString, err := token.SignedString([]byte(beego.AppConfig.String("JWTSignKey")))
 	return map[string]string{"token": tokenString}, err
 }
