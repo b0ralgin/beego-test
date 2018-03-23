@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/b0ralgin/test-beego/models"
+	jwt "github.com/dgrijalva/jwt-go"
 
 	"github.com/astaxie/beego"
 )
@@ -13,17 +14,68 @@ type LoginController struct {
 	beego.Controller
 }
 
-// @Title Create
-// @Description create object
-// @Param	body		body 	models.Object	true		"The object content"
-// @Success 200 {string} models.Object.Id
-// @Failure 403 body is empty
-// @router / [post]
-func (o *LoginController) Post() {
-	var ob models.Object
-	json.Unmarshal(o.Ctx.Input.RequestBody, &ob)
-	objectid := models.AddOne(ob)
-	o.Data["json"] = map[string]string{"ObjectId": objectid}
+const SIGNKEY = "B1rljsRlQlH7+NSvWuFjU/DROpULnTFB"
+
+type customClaims struct {
+	jwt.StandardClaims
+	ID string `json:"id"`
+}
+
+// @Title Login
+// @Description provides  authentication of user
+// @Param	body	body 	models.User	true		"The object content"
+// @Success 200 {string} JWTToken
+// @Failure 400 body is wrong
+// @Failure 403 user not exist
+// @Failure 500 errors in function
+// @router /v1/login [post]
+func (o *LoginController) Login() {
+	var user models.User
+	err := json.Unmarshal(o.Ctx.Input.RequestBody, &user)
+	if err != nil {
+		o.CustomAbort(400, "Can't Parse body")
+	}
+	if user, err := models.GetUser(user.Id); err != nil {
+		if err == models.NoUser {
+			o.CustomAbort(403, err.Error())
+		} else {
+			o.CustomAbort(500, err.Error())
+		}
+	} else {
+		o.Data["json"], err = generateJWTToken(*user)
+		if err != nil {
+			o.CustomAbort(500, err.Error())
+		}
+	}
+	o.ServeJSON()
+}
+
+// @Title Login
+// @Description provides  authentication of user
+// @Param	body	body 	models.User	true		"The object content"
+// @Success 200 {string} JWTToken
+// @Failure 400 body is wrong
+// @Failure 403 user not exist
+// @Failure 500 errors in function
+// @router /v1/login [post]
+func (o *LoginController) Login() {
+	var user models.User
+	err := json.Unmarshal(o.Ctx.Input.RequestBody, &user)
+	if err != nil {
+		o.CustomAbort(400, "Can't Parse body")
+	}
+	if user, err := models.GetUser(user.Id); err != nil {
+		if err == models.NoUser {
+			o.CustomAbort(403, err.Error())
+		} else {
+			o.CustomAbort(500, err.Error())
+		}
+	} else {
+		o.Data["json"], err = generateJWTToken(*user)
+		if err != nil {
+			o.CustomAbort(500, err.Error())
+		}
+	}
 	o.ServeJSON()
 }
 
@@ -89,4 +141,13 @@ func (o *LoginController) Delete() {
 	models.Delete(objectId)
 	o.Data["json"] = "delete success!"
 	o.ServeJSON()
+}
+
+func generateJWTToken(user models.User) (map[string]string, error) {
+	claims := &customClaims{
+		ID: user.Id,
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString([]byte(SIGNKEY))
+	return map[string]string{"token": tokenString}, err
 }
