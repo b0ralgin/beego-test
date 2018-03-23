@@ -29,7 +29,7 @@ type customClaims struct {
 // @Failure 403 user not exist
 // @Failure 500 errors in function
 // @router /v1/login [post]
-func (o *LoginController) Login() {
+func (o *LoginController) SignIn() {
 	var user models.User
 	err := json.Unmarshal(o.Ctx.Input.RequestBody, &user)
 	if err != nil {
@@ -53,7 +53,7 @@ func (o *LoginController) Login() {
 // @Failure 400 body is wrong
 // @Failure 409 user is exist
 // @router /v1/login [post]
-func (o *LoginController) Sign() {
+func (o *LoginController) SignUp() {
 	var user models.User
 	err := json.Unmarshal(o.Ctx.Input.RequestBody, &user)
 	if err != nil {
