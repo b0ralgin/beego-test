@@ -51,8 +51,7 @@ func (o *LoginController) Login() {
 // @Param	body	body 	models.User	true		"The object content"
 // @Success 200 {string} JWTToken
 // @Failure 400 body is wrong
-// @Failure 403 user not exist
-// @Failure 500 errors in function
+// @Failure 409 user is exist
 // @router /v1/login [post]
 func (o *LoginController) Sign() {
 	var user models.User
@@ -60,18 +59,12 @@ func (o *LoginController) Sign() {
 	if err != nil {
 		o.CustomAbort(400, "Can't Parse body")
 	}
-	if user, err := models.GetUser(user.Id); err != nil {
-		if err == models.NoUser {
-			o.CustomAbort(403, err.Error())
-		} else {
-			o.CustomAbort(500, err.Error())
-		}
+	if id, ok := models.AddUser(user); ok {
+		o.CustomAbort(409, "User already exist")
 	} else {
-		o.Data["json"], err = generateJWTToken(*user)
-		if err != nil {
-			o.CustomAbort(500, err.Error())
-		}
+		user.Id = id
 	}
+	o.Data["json"] = user
 	o.ServeJSON()
 }
 
