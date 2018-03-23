@@ -1,8 +1,12 @@
 package controllers
 
 import (
-	"github.com/b0ralgin/test-beego/models"
 	"encoding/json"
+	"fmt"
+	"strings"
+
+	"github.com/b0ralgin/test-beego/models"
+	jwt "github.com/dgrijalva/jwt-go"
 
 	"github.com/astaxie/beego"
 )
@@ -12,6 +16,26 @@ type UserController struct {
 	beego.Controller
 }
 
+func (u *UserController) Prepare() {
+	authorizationHeader := u.Ctx.Request.Header.Get("Authorization")
+	if authorizationHeader == "" {
+		u.CustomAbort(401, "Nonauthorized")
+	}
+	bearerToken := strings.Split(authorizationHeader, " ")
+	if len(bearerToken) == 2 {
+		var userClaims customClaims
+		token, err := jwt.ParseWithClaims(bearerToken[1], &userClaims, parseToken)
+		if err != nil {
+			u.CustomAbort(401, "Can't parse JWT token")
+		}
+		if !token.Valid {
+			u.CustomAbort(401, "Nonauthorized")
+		}
+		u.Ctx.Input.SetData("userId", token.Claims.(customClaims).ID)
+		return
+	}
+}
+
 // @Title CreateUser
 // @Description create users
 // @Param	body		body 	models.User	true		"body for user content"
@@ -19,20 +43,25 @@ type UserController struct {
 // @Failure 403 body is empty
 // @router / [post]
 func (u *UserController) Post() {
-	var user models.User
-	json.Unmarshal(u.Ctx.Input.RequestBody, &user)
-	uid := models.AddUser(user)
+	var profile models.Profile
+	err := json.Unmarshal(u.Ctx.Input.RequestBody, &profile)
+	if err != nil {
+		u.CustomAbort(400, "Cannot parse request")
+	}
+	userId, ok := u.Ctx.Input.GetData("userId").(string)
+	if !ok {
+		u.CustomAbort(400, "wrong ID")
+	}
+	user, err := models.GetUser(userId)
+	if err != nil {
+		if err == models.NoUser {
+			u.CustomAbort(400, "User doesn't exist")
+		} else {
+			u.CustomAbort(500, err.Error())
+		}
+	}
+	uid := models.AddProfile(user)
 	u.Data["json"] = map[string]string{"uid": uid}
-	u.ServeJSON()
-}
-
-// @Title GetAll
-// @Description get all Users
-// @Success 200 {object} models.User
-// @router / [get]
-func (u *UserController) GetAll() {
-	users := models.GetAllUsers()
-	u.Data["json"] = users
 	u.ServeJSON()
 }
 
@@ -43,15 +72,23 @@ func (u *UserController) GetAll() {
 // @Failure 403 :uid is empty
 // @router /:uid [get]
 func (u *UserController) Get() {
+	userId, ok := u.Ctx.Input.GetData("userId").(string)
+	if !ok {
+		u.CustomAbort(400, "wrong ID")
+	}
 	uid := u.GetString(":uid")
 	if uid != "" {
-		user, err := models.GetUser(uid)
-		if err != nil {
-			u.Data["json"] = err.Error()
+		userId = uid
+	}
+	user, err := models.GetUser(userId)
+	if err != nil {
+		if err == models.NoUser {
+			u.CustomAbort(400, "User doesn't exist")
 		} else {
-			u.Data["json"] = user
+			u.CustomAbort(500, err.Error())
 		}
 	}
+	u.Data["json"] = user.Profile
 	u.ServeJSON()
 }
 
@@ -63,15 +100,18 @@ func (u *UserController) Get() {
 // @Failure 403 :uid is not int
 // @router /:uid [put]
 func (u *UserController) Put() {
-	uid := u.GetString(":uid")
+	uid, ok := u.Ctx.Input.GetData("userId").(string)
+	if !ok {
+		u.CustomAbort(400, "wrong ID")
+	}
 	if uid != "" {
-		var user models.User
+		var user models.Profile
 		json.Unmarshal(u.Ctx.Input.RequestBody, &user)
-		uu, err := models.UpdateUser(uid, &user)
+		newProfile, err := models.UpdateProfile(uid, &user)
 		if err != nil {
-			u.Data["json"] = err.Error()
+			u.CustomAbort(500, err.Error())
 		} else {
-			u.Data["json"] = uu
+			u.Data["json"] = newProfile
 		}
 	}
 	u.ServeJSON()
@@ -84,36 +124,20 @@ func (u *UserController) Put() {
 // @Failure 403 uid is empty
 // @router /:uid [delete]
 func (u *UserController) Delete() {
-	uid := u.GetString(":uid")
-	models.DeleteUser(uid)
-	u.Data["json"] = "delete success!"
-	u.ServeJSON()
-}
-
-// @Title Login
-// @Description Logs user into the system
-// @Param	username		query 	string	true		"The username for login"
-// @Param	password		query 	string	true		"The password for login"
-// @Success 200 {string} login success
-// @Failure 403 user not exist
-// @router /login [get]
-func (u *UserController) Login() {
-	username := u.GetString("username")
-	password := u.GetString("password")
-	if models.Login(username, password) {
-		u.Data["json"] = "login success"
-	} else {
-		u.Data["json"] = "user not exist"
+	uid, ok := u.Ctx.Input.GetData("userId").(string)
+	if !ok {
+		u.CustomAbort(400, "wrong ID")
 	}
-	u.ServeJSON()
+	if uid != "" {
+		models.DeleteUser(uid)
+		u.Data["json"] = "delete success!"
+		u.ServeJSON()
+	}
 }
 
-// @Title logout
-// @Description Logs out current logged in user session
-// @Success 200 {string} logout success
-// @router /logout [get]
-func (u *UserController) Logout() {
-	u.Data["json"] = "logout success"
-	u.ServeJSON()
+func parseToken(token *jwt.Token) (interface{}, error) {
+	if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+		return nil, fmt.Errorf("There was an error")
+	}
+	return []byte(beego.AppConfig.String("JWTSignKey")), nil
 }
-
