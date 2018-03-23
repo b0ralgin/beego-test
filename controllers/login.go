@@ -35,14 +35,10 @@ func (o *LoginController) Login() {
 	if err != nil {
 		o.CustomAbort(400, "Can't Parse body")
 	}
-	if user, err := models.GetUser(user.Id); err != nil {
-		if err == models.NoUser {
-			o.CustomAbort(403, err.Error())
-		} else {
-			o.CustomAbort(500, err.Error())
-		}
+	if !models.Login(user.Id, user.Password) {
+		o.CustomAbort(403, "Wrong username of password")
 	} else {
-		o.Data["json"], err = generateJWTToken(*user)
+		o.Data["json"], err = generateJWTToken(user)
 		if err != nil {
 			o.CustomAbort(500, err.Error())
 		}
@@ -50,15 +46,15 @@ func (o *LoginController) Login() {
 	o.ServeJSON()
 }
 
-// @Title Login
-// @Description provides  authentication of user
+// @Title Sign
+// @Description provides  creation of user
 // @Param	body	body 	models.User	true		"The object content"
 // @Success 200 {string} JWTToken
 // @Failure 400 body is wrong
 // @Failure 403 user not exist
 // @Failure 500 errors in function
 // @router /v1/login [post]
-func (o *LoginController) Login() {
+func (o *LoginController) Sign() {
 	var user models.User
 	err := json.Unmarshal(o.Ctx.Input.RequestBody, &user)
 	if err != nil {
