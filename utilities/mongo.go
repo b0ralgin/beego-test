@@ -11,7 +11,7 @@ var (
 	singleton *mgo.Session
 )
 
-func Startup() (err error) {
+func MongoStartup() (err error) {
 	url := beego.AppConfig.String("db_url")
 	if url == "" {
 		return errors.New("can't find Mongo URL")
