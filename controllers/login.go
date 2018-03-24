@@ -69,10 +69,11 @@ func (o *LoginController) SignUp() {
 	var user models.User
 	err := json.Unmarshal(o.Ctx.Input.RequestBody, &user)
 	if err != nil {
-		o.CustomAbort(400, "Can't Parse body")
+		o.CustomAbort(400, "Can't Parse body: "+err.Error())
 	}
+	user.AddID()
 	if err := o.Mongo.AddUser(user); err != nil {
-		o.CustomAbort(400, "Can't Parse body")
+		o.CustomAbort(400, "Can't Parse body: "+err.Error())
 	}
 	o.Data["json"] = user
 	o.ServeJSON()

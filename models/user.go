@@ -28,9 +28,8 @@ type Profile struct {
 	Email   string `bson:"email"`
 }
 
-func AddUser(u *User) (string, bool) {
+func (u *User) AddID() {
 	u.ID = bson.NewObjectId()
-	return u.ID.String(), true
 }
 
 func (u *User) UpdateProfile(profile *Profile) {
