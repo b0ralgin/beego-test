@@ -28,14 +28,14 @@ func (o *LoginController) Prepare() {
 	}
 }
 
-// @Title Login
+// @Title SignIn
 // @Description provides  authentication of user
 // @Param	body	body 	models.User	true		"The object content"
 // @Success 200 {string} JWTToken
 // @Failure 400 body is wrong
 // @Failure 403 user not exist
 // @Failure 500 errors in function
-// @router /v1/login [post]
+// @router /v1/signin [post]
 func (o *LoginController) SignIn() {
 	var user models.User
 	err := json.Unmarshal(o.Ctx.Input.RequestBody, &user)
@@ -58,13 +58,13 @@ func (o *LoginController) SignIn() {
 	o.ServeJSON()
 }
 
-// @Title Sign
+// @Title SignUp
 // @Description provides  creation of user
 // @Param	body	body 	models.User	true		"The object content"
 // @Success 200 {string} JWTToken
 // @Failure 400 body is wrong
 // @Failure 409 user is exist
-// @router /v1/login [post]
+// @router /v1/signup [post]
 func (o *LoginController) SignUp() {
 	var user models.User
 	err := json.Unmarshal(o.Ctx.Input.RequestBody, &user)
@@ -72,7 +72,7 @@ func (o *LoginController) SignUp() {
 		o.CustomAbort(400, "Can't Parse body")
 	}
 	if err := o.Mongo.AddUser(user); err != nil {
-		o.CustomAbort(500, "Can't Parse body")
+		o.CustomAbort(400, "Can't Parse body")
 	}
 	o.Data["json"] = user
 	o.ServeJSON()
