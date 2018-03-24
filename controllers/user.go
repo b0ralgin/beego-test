@@ -5,15 +5,16 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/b0ralgin/test-beego/models"
-	jwt "github.com/dgrijalva/jwt-go"
-
 	"github.com/astaxie/beego"
+	"github.com/b0ralgin/test-beego/models"
+	"github.com/b0ralgin/test-beego/services"
+	jwt "github.com/dgrijalva/jwt-go"
 )
 
 // Operations about Users
 type UserController struct {
 	beego.Controller
+	*services.Mongo
 }
 
 func (u *UserController) Prepare() {
@@ -32,7 +33,10 @@ func (u *UserController) Prepare() {
 			u.CustomAbort(401, "Nonauthorized")
 		}
 		u.Ctx.Input.SetData("userId", token.Claims.(customClaims).ID)
-		return
+		u.Mongo, err = services.Startup()
+		if err != nil {
+			u.CustomAbort(500, err.Error())
+		}
 	}
 }
 
@@ -52,7 +56,7 @@ func (u *UserController) Post() {
 	if !ok {
 		u.CustomAbort(400, "wrong ID")
 	}
-	user, err := models.GetUser(userId)
+	user, err := u.Mongo.FindUser(userId)
 	if err != nil {
 		if err == models.NoUser {
 			u.CustomAbort(400, "User doesn't exist")
@@ -60,8 +64,7 @@ func (u *UserController) Post() {
 			u.CustomAbort(500, err.Error())
 		}
 	}
-	uid := models.AddProfile(user)
-	u.Data["json"] = map[string]string{"uid": uid}
+	u.Data["json"] = user
 	u.ServeJSON()
 }
 
@@ -80,7 +83,7 @@ func (u *UserController) Get() {
 	if uid != "" {
 		userId = uid
 	}
-	user, err := models.GetUser(userId)
+	user, err := u.Mongo.FindUser(userId)
 	if err != nil {
 		if err == models.NoUser {
 			u.CustomAbort(400, "User doesn't exist")
@@ -104,15 +107,21 @@ func (u *UserController) Put() {
 	if !ok {
 		u.CustomAbort(400, "wrong ID")
 	}
-	if uid != "" {
-		var user models.Profile
-		json.Unmarshal(u.Ctx.Input.RequestBody, &user)
-		newProfile, err := models.UpdateProfile(uid, &user)
-		if err != nil {
-			u.CustomAbort(500, err.Error())
+	user, err := u.Mongo.FindUser(uid)
+	if err != nil {
+		if err == models.NoUser {
+			u.CustomAbort(400, "User doesn't exist")
 		} else {
-			u.Data["json"] = newProfile
+			u.CustomAbort(500, err.Error())
 		}
+	}
+	var profile models.Profile
+	json.Unmarshal(u.Ctx.Input.RequestBody, &profile)
+	err = u.Mongo.UpdateProfile(user, &profile)
+	if err != nil {
+		u.CustomAbort(500, err.Error())
+	} else {
+		u.Data["json"] = user
 	}
 	u.ServeJSON()
 }
@@ -129,10 +138,10 @@ func (u *UserController) Delete() {
 		u.CustomAbort(400, "wrong ID")
 	}
 	if uid != "" {
-		models.DeleteUser(uid)
+		u.Mongo.DeleteUser(uid)
 		u.Data["json"] = "delete success!"
-		u.ServeJSON()
 	}
+	u.ServeJSON()
 }
 
 func parseToken(token *jwt.Token) (interface{}, error) {
