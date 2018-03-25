@@ -32,40 +32,12 @@ func (u *UserController) Prepare() {
 		if !token.Valid {
 			u.CustomAbort(401, "Nonauthorized")
 		}
-		u.Ctx.Input.SetData("userId", token.Claims.(customClaims).ID)
+		u.Ctx.Input.SetData("userId", token.Claims.(*customClaims).ID)
 		u.Mongo, err = services.Startup()
 		if err != nil {
 			u.CustomAbort(500, err.Error())
 		}
 	}
-}
-
-// @Title CreateUser
-// @Description create users
-// @Param	body		body 	models.User	true		"body for user content"
-// @Success 200 {int} models.User.Id
-// @Failure 403 body is empty
-// @router / [post]
-func (u *UserController) Post() {
-	var profile models.Profile
-	err := json.Unmarshal(u.Ctx.Input.RequestBody, &profile)
-	if err != nil {
-		u.CustomAbort(400, "Cannot parse request")
-	}
-	userId, ok := u.Ctx.Input.GetData("userId").(string)
-	if !ok {
-		u.CustomAbort(400, "wrong ID")
-	}
-	user, err := u.Mongo.FindUser(userId)
-	if err != nil {
-		if err == models.NoUser {
-			u.CustomAbort(400, "User doesn't exist")
-		} else {
-			u.CustomAbort(500, err.Error())
-		}
-	}
-	u.Data["json"] = user
-	u.ServeJSON()
 }
 
 // @Title Get
@@ -85,13 +57,17 @@ func (u *UserController) Get() {
 	}
 	user, err := u.Mongo.FindUser(userId)
 	if err != nil {
-		if err == models.NoUser {
-			u.CustomAbort(400, "User doesn't exist")
-		} else {
-			u.CustomAbort(500, err.Error())
+		if err != nil {
+			if err == models.NoUser {
+				u.CustomAbort(400, "User doesn't exist")
+			} else {
+				u.CustomAbort(500, err.Error())
+			}
 		}
+		u.CustomAbort(500, err.Error())
 	}
-	u.Data["json"] = user.Profile
+
+	u.Data["json"] = user
 	u.ServeJSON()
 }
 
@@ -101,7 +77,7 @@ func (u *UserController) Get() {
 // @Param	body		body 	models.User	true		"body for user content"
 // @Success 200 {object} models.User
 // @Failure 403 :uid is not int
-// @router /:uid [put]
+// @router / [put]
 func (u *UserController) Put() {
 	uid, ok := u.Ctx.Input.GetData("userId").(string)
 	if !ok {
@@ -115,14 +91,22 @@ func (u *UserController) Put() {
 			u.CustomAbort(500, err.Error())
 		}
 	}
-	var profile models.Profile
-	json.Unmarshal(u.Ctx.Input.RequestBody, &profile)
-	err = u.Mongo.UpdateProfile(user, &profile)
-	if err != nil {
-		u.CustomAbort(500, err.Error())
-	} else {
-		u.Data["json"] = user
+	var newUser models.User
+	json.Unmarshal(u.Ctx.Input.RequestBody, &newUser)
+	if newUser.Password != "" {
+		err = u.Mongo.UpdatePassword(user, string(newUser.Password))
+		if err != nil {
+			u.CustomAbort(500, err.Error())
+		}
 	}
+	if newUser.Profile != nil {
+		user.UpdateProfile(*newUser.Profile)
+		err = u.Mongo.UpdateProfile(user)
+		if err != nil {
+			u.CustomAbort(500, err.Error())
+		}
+	}
+	u.Data["json"] = user
 	u.ServeJSON()
 }
 
@@ -131,14 +115,21 @@ func (u *UserController) Put() {
 // @Param	uid		path 	string	true		"The uid you want to delete"
 // @Success 200 {string} delete success!
 // @Failure 403 uid is empty
-// @router /:uid [delete]
+// @router / [delete]
 func (u *UserController) Delete() {
 	uid, ok := u.Ctx.Input.GetData("userId").(string)
 	if !ok {
 		u.CustomAbort(400, "wrong ID")
 	}
 	if uid != "" {
-		u.Mongo.DeleteUser(uid)
+		err := u.Mongo.DeleteUser(uid)
+		if err != nil {
+			if err == models.NoUser {
+				u.CustomAbort(400, "User doesn't exist")
+			} else {
+				u.CustomAbort(500, err.Error())
+			}
+		}
 		u.Data["json"] = "delete success!"
 	}
 	u.ServeJSON()

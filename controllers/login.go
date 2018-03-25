@@ -42,18 +42,16 @@ func (o *LoginController) SignIn() {
 	if err != nil {
 		o.CustomAbort(400, "Can't Parse body")
 	}
-	if ok, err := o.Mongo.AuthenticateUser(user.ID.String(), user.Password); !ok {
-		if err != nil {
-			o.CustomAbort(500, err.Error())
-		} else {
-			o.CustomAbort(403, "Wrong username of password")
-		}
-
-	} else {
-		o.Data["json"], err = generateJWTToken(user)
-		if err != nil {
-			o.CustomAbort(500, err.Error())
-		}
+	u, err := o.Mongo.AuthenticateUser(user.Username, string(user.Password))
+	if u == nil {
+		o.CustomAbort(403, "Wrong username of password")
+	}
+	if err != nil {
+		o.CustomAbort(500, err.Error())
+	}
+	o.Data["json"], err = generateJWTToken(*u)
+	if err != nil {
+		o.CustomAbort(500, err.Error())
 	}
 	o.ServeJSON()
 }
@@ -81,7 +79,7 @@ func (o *LoginController) SignUp() {
 
 func generateJWTToken(user models.User) (map[string]string, error) {
 	claims := &customClaims{
-		ID: user.ID.String(),
+		ID: user.ID.Hex(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenString, err := token.SignedString([]byte(beego.AppConfig.String("JWTSignKey")))
