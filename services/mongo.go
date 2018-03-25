@@ -17,43 +17,40 @@ func Startup() (*Mongo, error) {
 	return &Mongo{mongo}, mongo.Ping()
 }
 
-func (m *Mongo) FindUser(uid string) (*models.User, error) {
-	u := models.User{}
-	err := m.DB(beego.AppConfig.String("DB")).C("Users").Find(bson.M{"ID": uid}).One(&u)
-	return &u, err
+func (m *Mongo) FindUser(uid string) (u *models.User, err error) {
+	err = m.GetColl().FindId(bson.ObjectIdHex(uid)).One(&u)
+	return
 }
 
-func (m *Mongo) RemoveProfile(user models.User) error {
-	change := bson.M{"$unset": bson.M{"profile": nil}}
-	return m.DB(beego.AppConfig.String("DB")).C("Users").Update(bson.M{"id": user.ID}, change)
+func (m *Mongo) UpdateProfile(user *models.User) error {
+	change := bson.M{"$set": bson.M{"profile": user.Profile}}
+	return m.GetColl().UpdateId(user.ID, change)
 }
 
-func (m *Mongo) UpdateProfile(user *models.User, profile *models.Profile) error {
-	user.UpdateProfile(profile)
-	change := bson.M{"$set": bson.M{"profile": profile}}
-	return m.DB(beego.AppConfig.String("DB")).C("Users").Update(bson.M{"id": user.ID}, change)
+func (m *Mongo) UpdatePassword(user *models.User, password string) error {
+	change := bson.M{"$set": bson.M{"password_hash": password}}
+	return m.GetColl().UpdateId(user.ID, change)
 }
 
 func (m *Mongo) AddUser(user models.User) error {
-	return m.DB(beego.AppConfig.String("DB")).C("Users").Insert(user)
+	user.AddID()
+	return m.GetColl().Insert(user)
 }
 
-func (m *Mongo) DeleteUser(userId string) error {
-	return m.DB(beego.AppConfig.String("DB")).C("Users").Remove(bson.M{"ID": userId})
+func (m *Mongo) DeleteUser(uid string) error {
+	return m.GetColl().RemoveId(bson.ObjectIdHex(uid))
 }
 
-func (m *Mongo) AuthenticateUser(userId string, password string) (bool, error) {
-	n, err := m.DB(beego.AppConfig.String("DB")).C("Users").Find(bson.M{
+func (m *Mongo) AuthenticateUser(userName string, password string) (u *models.User, err error) {
+	err = m.GetColl().Find(bson.M{
 		"$and": []interface{}{
-			bson.M{"ID": userId},
+			bson.M{"username": userName},
 			bson.M{"password_hash": password},
 		},
-	}).Count()
-	if err != nil {
-		return false, err
-	}
-	if n != 1 {
-		return false, nil
-	}
-	return true, nil
+	}).One(&u)
+	return
+}
+
+func (m *Mongo) GetColl() *mgo.Collection {
+	return m.DB(beego.AppConfig.String("db")).C("Users")
 }
