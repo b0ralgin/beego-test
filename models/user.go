@@ -1,13 +1,14 @@
 package models
 
 import (
+	"encoding/json"
 	"errors"
 
 	"github.com/globalsign/mgo/bson"
 )
 
 var (
-	NoUser = errors.New("User Not Exist")
+	NoUser = errors.New("not found")
 )
 
 func init() {
@@ -15,9 +16,9 @@ func init() {
 }
 
 type User struct {
-	ID       bson.ObjectId `bson:"ID"`
+	ID       bson.ObjectId `bson:"_id" json:"-"`
 	Username string        `bson:"username"`
-	Password string        `bson:"password_hash"`
+	Password passwordHash  `bson:"password_hash"`
 	Profile  *Profile      `bson:"profile"`
 }
 
@@ -28,11 +29,16 @@ type Profile struct {
 	Email   string `bson:"email"`
 }
 
+type passwordHash string
+
 func (u *User) AddID() {
 	u.ID = bson.NewObjectId()
 }
 
-func (u *User) UpdateProfile(profile *Profile) {
+func (u *User) UpdateProfile(profile Profile) {
+	if u.Profile == nil {
+		u.Profile = new(Profile)
+	}
 	if profile.Age != 0 {
 		u.Profile.Age = profile.Age
 	}
@@ -45,4 +51,8 @@ func (u *User) UpdateProfile(profile *Profile) {
 	if profile.Email != "" {
 		u.Profile.Email = profile.Email
 	}
+}
+
+func (p passwordHash) MarshalJSON() ([]byte, error) {
+	return json.Marshal(nil)
 }
