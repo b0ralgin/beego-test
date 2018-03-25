@@ -22,6 +22,11 @@ func (m *Mongo) FindUser(uid string) (u *models.User, err error) {
 	return
 }
 
+func (m *Mongo) FindUserByName(name string) (u *models.User, err error) {
+	err = m.GetColl().Find(bson.M{"username": name}).One(&u)
+	return
+}
+
 func (m *Mongo) UpdateProfile(user *models.User) error {
 	change := bson.M{"$set": bson.M{"profile": user.Profile}}
 	return m.GetColl().UpdateId(user.ID, change)
@@ -34,6 +39,7 @@ func (m *Mongo) UpdatePassword(user *models.User, password string) error {
 
 func (m *Mongo) AddUser(user models.User) error {
 	user.AddID()
+
 	return m.GetColl().Insert(user)
 }
 
