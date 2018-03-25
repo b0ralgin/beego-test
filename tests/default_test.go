@@ -54,3 +54,32 @@ func TestSignUp(t *testing.T) {
 		})
 	})
 }
+
+func TestSignIn(t *testing.T) {
+	user := models.User{
+		Username: "test",
+		Password: "test",
+	}
+	mUser, _ := json.Marshal(user)
+	reqReader := bytes.NewReader(mUser)
+	r, _ := http.NewRequest("POST", "/v1/signin", reqReader)
+	w := httptest.NewRecorder()
+	beego.BeeApp.Handlers.ServeHTTP(w, r)
+	beego.Trace("testing", "TestGet", "Code[%d]\n%s", w.Code, w.Body.String())
+	var token struct {
+		Token string
+	}
+	json.Unmarshal(w.Body.Bytes(), &token)
+
+	Convey("Subject: SingUp Endpoint\n", t, func() {
+		Convey("Status Code Should Be 200", func() {
+			So(w.Code, ShouldEqual, 200)
+		})
+		Convey("The Result Should Not Be Empty", func() {
+			So(w.Body.Len(), ShouldBeGreaterThan, 0)
+		})
+		Convey("The result Should Be Equal", func() {
+			So(token.Token, ShouldNotBeNil)
+		})
+	})
+}
