@@ -1,0 +1,67 @@
+@token = Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MTM2MTYxMTI0NzI4MTMwMSwibmFtZSI6IiJ9.0NOa8Ug5uKfokMiGqoSyUf0HHOoi5HNpdEHuO_QDNIU
+@wrong_token = Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MTAxNTQ4ODUzNjE5NjcxNDMsIm5hbWUiOiIifQ.iqvsZNmeqMY8bUxcaJ12JQpbjl_kMttM07UBPgWnhaY
+
+
+POST http://localhost:8080/v1/signup HTTP/1.1
+content-type: application/json
+Authorization: {{token}}
+
+{
+  "username": "Kirill",
+  "password": "324234" 
+}
+
+###
+
+POST http://localhost:8080/v1/signin HTTP/1.1
+content-type: application/json
+Authorization: {{token}}
+
+{
+  "username": "Kirill",
+  "password": "324234" 
+}
+
+
+###
+GET http://localhost:8080/?uid=5ab79393fe44d8cff2dc4e35 HTTP/1.1
+content-type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjVhYjc5MzlkZmU0NGQ4Y2ZmMmRjNGUzNyJ9.oZaezVGqaS20HWxHb3aJU3wjfhlgzHrRYz1Bf1C-x58
+
+PUT http://localhost:8080 HTTP/1.1
+content-type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjVhYjc0ZDJlZmU0NGQ4ODRhZGQxN2I1MSJ9.axceVWIO_DrPabMcCp6LHN3x8QirgWoz9E9mL3FmN0g
+
+{
+  "profile": {
+     "age": 29,
+  "gender": "M" 
+  }
+}
+###
+PUT http://localhost:8080 HTTP/1.1
+content-type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjVhYjc0ZDJlZmU0NGQ4ODRhZGQxN2I1MSJ9.axceVWIO_DrPabMcCp6LHN3x8QirgWoz9E9mL3FmN0g
+
+{
+  "password": "123"
+} 
+###
+
+DELETE http://localhost:8080 HTTP/1.1
+content-type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjVhYjc0ZDJlZmU0NGQ4ODRhZGQxN2I1MSJ9.axceVWIO_DrPabMcCp6LHN3x8QirgWoz9E9mL3FmN0g
+
+###
+
+POST http://localhost:8080/v1/reset/?name=Kirill HTTP/1.1
+content-type: application/json
+
+###
+
+POST http://localhost:8080/v1/reset/?name=Kirill&requestid=1KVBDDGVCNd-5KGJSTbaN8T HTTP/1.1
+content-type: application/json
+
+{
+  "password": "1234"
+}
