@@ -2,13 +2,8 @@ package models
 
 import (
 	"encoding/json"
-	"errors"
 
 	"github.com/globalsign/mgo/bson"
-)
-
-var (
-	NoUser = errors.New("not found")
 )
 
 func init() {

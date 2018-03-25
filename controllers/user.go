@@ -58,7 +58,7 @@ func (u *UserController) Get() {
 	user, err := u.Mongo.FindUser(userId)
 	if err != nil {
 		if err != nil {
-			if err == models.NoUser {
+			if user == nil {
 				u.CustomAbort(400, "User doesn't exist")
 			} else {
 				u.CustomAbort(500, err.Error())
@@ -85,7 +85,7 @@ func (u *UserController) Put() {
 	}
 	user, err := u.Mongo.FindUser(uid)
 	if err != nil {
-		if err == models.NoUser {
+		if user == nil {
 			u.CustomAbort(400, "User doesn't exist")
 		} else {
 			u.CustomAbort(500, err.Error())
@@ -124,15 +124,17 @@ func (u *UserController) Delete() {
 	if uid != "" {
 		err := u.Mongo.DeleteUser(uid)
 		if err != nil {
-			if err == models.NoUser {
-				u.CustomAbort(400, "User doesn't exist")
-			} else {
-				u.CustomAbort(500, err.Error())
-			}
+			u.CustomAbort(500, err.Error())
 		}
 		u.Data["json"] = "delete success!"
 	}
 	u.ServeJSON()
+}
+
+func (u *UserController) Finish() {
+	defer func() {
+		u.Mongo.Close()
+	}()
 }
 
 func parseToken(token *jwt.Token) (interface{}, error) {
