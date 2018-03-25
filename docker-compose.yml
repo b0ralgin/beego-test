@@ -1,0 +1,26 @@
+version: "3"
+networks: 
+  beego:
+    driver: bridge
+services:
+  service:
+    build:
+      context: .
+      dockerfile: service_dockerfile
+    container_name: beego_service
+    depends_on:
+      - mongo
+    networks:
+      beego:
+        aliases:
+          - service
+    ports:
+      - "8080:8080"
+  mongo:
+    image: mongo
+    container_name: beego_mongo
+    restart: always
+    networks:
+      beego:
+        aliases:
+        - mongo
